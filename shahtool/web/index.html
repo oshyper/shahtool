@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shahtool</title>
+<style>
+:root{
+  --bg:#f1f4f6; --panel:#ffffff; --ink:#15212b; --muted:#566673; --line:#d3dce3;
+  --accent:#c2410c; --accent-ink:#ffffff; --ok:#17803d; --warn:#9a5b00; --bad:#b42318;
+  --ok-bg:#e3f4e8; --warn-bg:#fdf0d5; --bad-bg:#fde7e5; --chip:#e7edf1;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0e1820; --panel:#15242f; --ink:#e5edf2; --muted:#92a6b4; --line:#26394780;
+    --accent:#ff8a3d; --accent-ink:#1a0d03; --ok:#5fd382; --warn:#ffc16b; --bad:#ff7b72;
+    --ok-bg:#12301f; --warn-bg:#3a2b0e; --bad-bg:#40191a; --chip:#1f3342;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--font)}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+h1{margin:0;font-size:1.5rem;letter-spacing:-.01em}
+h1 small{font-weight:400;color:var(--muted);font-size:.85rem;margin-left:6px}
+h2{margin:0 0 4px;font-size:1.05rem}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:var(--chip);font-size:.9rem}
+.pill i{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.pill.on i{background:var(--ok)} .pill.off i{background:var(--warn)}
+nav{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+nav button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;cursor:pointer;color:var(--muted)}
+nav button[aria-selected=true]{color:var(--ink);border-color:var(--accent);font-weight:600}
+.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:920px){.grid{grid-template-columns:minmax(0,1fr) 400px}.console{position:sticky;top:16px;align-self:start}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card p.hint{margin:0 0 12px;color:var(--muted);font-size:.92rem}
+.step{display:flex;gap:12px}
+.step .n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:.9rem}
+.step .body{flex:1;min-width:0}
+.btn{border:1px solid var(--line);background:var(--panel);padding:9px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+input[type=text]{flex:1;min-width:180px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.list{display:grid;gap:8px;margin-top:8px}
+.item{display:block;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);cursor:pointer}
+.item:hover{border-color:var(--muted)}
+.item[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.item .t{font-weight:600;overflow-wrap:anywhere}
+.item .s{color:var(--muted);font-size:.85rem;overflow-wrap:anywhere}
+.tag{display:inline-block;padding:1px 8px;border-radius:6px;font-size:.78rem;font-weight:600;margin-left:6px;vertical-align:1px}
+.tag.clean,.tag.lock{background:var(--bad-bg);color:var(--bad)}
+.tag.keep_data{background:var(--ok-bg);color:var(--ok)}
+.tag.other,.tag.folder,.tag.archive{background:var(--chip);color:var(--muted)}
+.checks{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+.checks li{padding:8px 10px;border-radius:8px;background:var(--chip)}
+.checks .ok{background:var(--ok-bg)} .checks .warn{background:var(--warn-bg)} .checks .fail{background:var(--bad-bg)}
+.checks b{display:block}
+pre.cmds{margin:8px 0;padding:10px;border-radius:8px;background:#0b1319;color:#c8d6df;font:.8rem/1.45 var(--mono);overflow:auto;max-height:240px}
+.console .card{margin:0}
+.console h2{display:flex;justify-content:space-between;align-items:center}
+#log{height:340px;overflow:auto;margin:8px 0 0;padding:10px;border-radius:8px;background:#0b1319;color:#c8d6df;font:.78rem/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+progress{width:100%;height:10px;accent-color:var(--accent);margin-top:8px}
+.grid2{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:8px 0}
+dt{color:var(--muted)} dd{margin:0;overflow-wrap:anywhere}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);max-width:min(460px,92vw);padding:20px}
+dialog::backdrop{background:#000a}
+.msg{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--chip);overflow-wrap:anywhere}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Shahtool <small id="ver"></small></h1>
+    <span class="pill off" id="devpill"><i></i><span id="devtext">Checking device...</span></span>
+  </header>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-tab="flash">Flash a ROM</button>
+    <button role="tab" aria-selected="false" data-tab="tools">Device tools</button>
+  </nav>
+
+  <div class="grid">
+    <main>
+      <section id="tab-flash">
+        <div class="card step">
+          <div class="n">1</div>
+          <div class="body">
+            <h2>Pick a ROM</h2>
+            <p class="hint">Fastboot ROMs found on this device. You can also scan a folder or paste a path.</p>
+            <div class="row">
+              <input type="text" id="scanpath" placeholder="Folder to scan, or full path to a ROM file" aria-label="Folder or ROM path">
+              <button class="btn" id="btnscan">Scan</button>
+              <button class="btn" id="btnuse">Use this path</button>
+            </div>
+            <div class="list" id="roms"></div>
+          </div>
+        </div>
+
+        <div class="card step" id="s2">
+          <div class="n">2</div>
+          <div class="body">
+            <h2>Prepare</h2>
+            <p class="hint" id="selname">Choose a ROM first.</p>
+            <div class="row">
+              <label><input type="checkbox" id="chkverify"> Verify checksum first</label>
+            </div>
+            <button class="btn primary" id="btnprep" disabled>Extract and find scripts</button>
+          </div>
+        </div>
+
+        <div class="card step">
+          <div class="n">3</div>
+          <div class="body">
+            <h2>Choose a flash script</h2>
+            <p class="hint">Clean flash erases your data. Dirty flash keeps it.</p>
+            <div class="list" id="scripts"><div class="msg">Nothing prepared yet.</div></div>
+            <div class="row"><button class="btn" id="btnpreview" disabled>Preview commands</button></div>
+            <pre class="cmds hidden" id="cmds"></pre>
+          </div>
+        </div>
+
+        <div class="card step">
+          <div class="n">4</div>
+          <div class="body">
+            <h2>Check and flash</h2>
+            <p class="hint">Put the phone in fastboot mode and connect it with the cable.</p>
+            <div class="row">
+              <button class="btn" id="btncheck" disabled>Run safety checks</button>
+              <button class="btn danger" id="btnflash" disabled>Flash...</button>
+            </div>
+            <ul class="checks" id="checks"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-tools" class="hidden">
+        <div class="card">
+          <h2>Device</h2>
+          <div class="row"><button class="btn" id="btninfo">Read device info</button></div>
+          <dl id="info"></dl>
+        </div>
+        <div class="card">
+          <h2>Reboot and slots</h2>
+          <div class="grid2">
+            <button class="btn" data-act="reboot_system">Reboot to system</button>
+            <button class="btn" data-act="reboot_bootloader">Reboot to bootloader</button>
+            <button class="btn" data-act="reboot_recovery">Reboot to recovery</button>
+            <button class="btn" data-act="reboot_fastbootd">Reboot to fastbootd</button>
+            <button class="btn" data-act="set_slot_a">Set active slot A</button>
+            <button class="btn" data-act="set_slot_b">Set active slot B</button>
+            <button class="btn" data-act="getvar_all">Dump all variables</button>
+            <button class="btn danger" data-act="wipe_data">Wipe data...</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Flash one partition</h2>
+          <div class="row">
+            <input type="text" id="partname" placeholder="Partition, for example boot" aria-label="Partition name">
+            <input type="text" id="partimg" placeholder="Full path to the .img file" aria-label="Image path">
+            <button class="btn" id="btnpart">Flash partition</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Verify a file</h2>
+          <div class="row">
+            <input type="text" id="vpath" placeholder="Full path to the ROM file" aria-label="File path">
+            <input type="text" id="vhash" placeholder="Expected md5 or sha256 (optional)" aria-label="Expected hash">
+            <button class="btn" id="btnverify">Verify</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Maintenance</h2>
+          <div class="row">
+            <button class="btn" id="btnclean">Delete extracted ROMs</button>
+            <button class="btn" id="btnupdate">Check for updates</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="console">
+      <div class="card" id="console">
+        <h2><span>Activity</span><button class="btn" id="btncancel" disabled>Cancel</button></h2>
+        <progress id="bar" max="1" value="0" class="hidden"></progress>
+        <pre id="log" aria-live="polite" tabindex="0"></pre>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <h2 id="dtitle"></h2>
+  <p id="dtext"></p>
+  <div class="row"><input type="text" id="dinput" autocomplete="off" aria-label="Confirmation word"></div>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn" id="dno">Cancel</button>
+    <button class="btn danger" id="dyes" disabled>Confirm</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const TOKEN = new URLSearchParams(location.search).get("t") || sessionStorage.getItem("shahtool-token") || "";
+sessionStorage.setItem("shahtool-token", TOKEN);
+const S = {rom: null, romDir: null, scripts: [], script: null, serial: "", job: null, since: 0, timer: null};
+
+async function api(path, body) {
+  const opt = {headers: {"X-Token": TOKEN}};
+  if (body !== undefined) { opt.method = "POST"; opt.body = JSON.stringify(body); }
+  const r = await fetch(path, opt);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ("HTTP " + r.status));
+  return data;
+}
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+  }
+  for (const k of kids) e.append(k);
+  return e;
+}
+function log(msg) { const l = $("log"); l.textContent += msg + "\n"; l.scrollTop = l.scrollHeight; }
+function fail(e) { log("Error: " + e.message); }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
+  $("tab-flash").classList.toggle("hidden", b.dataset.tab !== "flash");
+  $("tab-tools").classList.toggle("hidden", b.dataset.tab !== "tools");
+}));
+
+/* ---------- device status ---------- */
+async function poll() {
+  try {
+    const s = await api("/api/state");
+    $("ver").textContent = "v" + s.version;
+    const pill = $("devpill");
+    if (!s.fastboot) { pill.className = "pill off"; $("devtext").textContent = "fastboot is not installed"; }
+    else if (s.devices.length) { S.serial = s.devices[0]; pill.className = "pill on"; $("devtext").textContent = "Fastboot device: " + S.serial; }
+    else if (s.adb_devices.some(d => d[1] === "device")) { S.serial = ""; pill.className = "pill off"; $("devtext").textContent = "Phone is on, not in fastboot yet"; }
+    else { S.serial = ""; pill.className = "pill off"; $("devtext").textContent = "No device connected"; }
+    if (s.job && s.job.state === "running" && !S.job) track(s.job.id);
+  } catch (e) { $("devtext").textContent = "GUI lost connection. Restart Shahtool."; }
+}
+setInterval(poll, 2500); poll();
+
+/* ---------- step 1: ROM list ---------- */
+function romButton(r) {
+  const b = h("button", {class: "item", "aria-pressed": "false", type: "button"},
+    h("div", {class: "t"}, r.name, h("span", {class: "tag " + r.kind}, r.kind === "folder" ? "extracted" : r.size_h)),
+    h("div", {class: "s"}, r.path));
+  b.addEventListener("click", () => pickRom(r, b));
+  return b;
+}
+async function scan(path) {
+  $("roms").replaceChildren(h("div", {class: "msg"}, "Scanning..."));
+  try {
+    const d = await api("/api/scan", {path: path || ""});
+    $("roms").replaceChildren(...(d.roms.length ? d.roms.map(romButton)
+      : [h("div", {class: "msg"}, "No ROM found. Scan another folder or paste the full path.")]));
+  } catch (e) { $("roms").replaceChildren(h("div", {class: "msg"}, e.message)); }
+}
+function pickRom(r, btn) {
+  document.querySelectorAll("#roms .item").forEach(x => x.setAttribute("aria-pressed", "false"));
+  if (btn) btn.setAttribute("aria-pressed", "true");
+  S.rom = r; S.romDir = null; S.scripts = []; S.script = null; renderScripts();
+  $("selname").textContent = r.name + (r.size_h ? " (" + r.size_h + ")" : "");
+  $("btnprep").disabled = false;
+  $("chkverify").disabled = r.kind === "folder";
+  $("btnprep").textContent = r.kind === "folder" ? "Find scripts" : "Extract and find scripts";
+}
+$("btnscan").onclick = () => scan($("scanpath").value.trim());
+$("btnuse").onclick = async () => {
+  const p = $("scanpath").value.trim();
+  if (!p) return;
+  const isArchive = /\.(zip|tgz|tar\.gz|7z|rar)$/i.test(p);
+  pickRom({name: p.split(/[\\/]/).pop() || p, path: p, kind: isArchive ? "archive" : "folder", size_h: ""});
+};
+$("btnprep").onclick = async () => {
+  if (!S.rom) return;
+  try {
+    if (S.rom.kind === "folder") {
+      const d = await api("/api/scripts", {dir: S.rom.path});
+      S.romDir = d.rom_dir; S.scripts = d.scripts; renderScripts();
+    } else {
+      const d = await api("/api/prepare", {path: S.rom.path, verify: $("chkverify").checked});
+      track(d.job, res => { S.romDir = res.rom_dir; S.scripts = res.scripts || []; renderScripts(); });
+    }
+  } catch (e) { fail(e); }
+};
+
+/* ---------- step 3: scripts ---------- */
+const KIND = {clean: "erases data", keep_data: "keeps data", lock: "re-locks bootloader", other: ""};
+function renderScripts() {
+  $("cmds").classList.add("hidden");
+  S.script = null; $("btnpreview").disabled = true; $("btncheck").disabled = true; $("btnflash").disabled = true;
+  $("checks").replaceChildren();
+  if (!S.scripts.length) {
+    $("scripts").replaceChildren(h("div", {class: "msg"}, S.romDir ? "No flash script found in " + S.romDir : "Nothing prepared yet."));
+    return;
+  }
+  $("scripts").replaceChildren(...S.scripts.map(s => {
+    const b = h("button", {class: "item", "aria-pressed": "false", type: "button"},
+      h("div", {class: "t"}, s.name, h("span", {class: "tag " + s.kind}, KIND[s.kind] || "script")),
+      h("div", {class: "s"}, s.title));
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#scripts .item").forEach(x => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true"); S.script = s;
+      $("btnpreview").disabled = false; $("btncheck").disabled = false; $("btnflash").disabled = false;
+      $("cmds").classList.add("hidden"); $("checks").replaceChildren();
+    });
+    return b;
+  }));
+}
+$("btnpreview").onclick = async () => {
+  try {
+    const d = await api("/api/preview", {dir: S.romDir, name: S.script.name});
+    $("cmds").textContent = d.commands.join("\n") || "No fastboot commands found.";
+    $("cmds").classList.remove("hidden");
+  } catch (e) { fail(e); }
+};
+
+/* ---------- step 4: checks + flash ---------- */
+async function runChecks() {
+  const d = await api("/api/preflight", {dir: S.romDir, name: S.script.name, archive: S.rom.name, serial: S.serial});
+  $("checks").replaceChildren(...d.checks.map(c => h("li", {class: c.status}, h("b", {}, c.name), c.detail)));
+  return d;
+}
+$("btncheck").onclick = async () => { $("btncheck").disabled = true; try { await runChecks(); } catch (e) { fail(e); } $("btncheck").disabled = false; };
+
+function confirmDialog(title, text, word) {
+  return new Promise(resolve => {
+    $("dtitle").textContent = title; $("dtext").textContent = text + " Type " + word + " to continue.";
+    const inp = $("dinput"), yes = $("dyes"); inp.value = ""; yes.disabled = true;
+    inp.oninput = () => { yes.disabled = inp.value.trim() !== word; };
+    $("dno").onclick = () => { $("dlg").close(); resolve(null); };
+    yes.onclick = () => { $("dlg").close(); resolve(word); };
+    $("dlg").showModal(); inp.focus();
+  });
+}
+$("btnflash").onclick = async () => {
+  if (!S.script) return;
+  try {
+    const d = await runChecks();
+    if (d.blocked) { log("Fix the failed checks first."); return; }
+    const word = S.script.kind === "lock" ? "LOCK" : "FLASH";
+    const what = S.script.kind === "lock" ? "This re-locks the bootloader. A wrong ROM can brick the phone."
+      : S.script.wipes_data ? "This erases all data on the phone." : "Your data is kept.";
+    const ok = await confirmDialog("Flash " + S.script.name + "?", what + " Do not unplug the cable until it finishes.", word);
+    if (!ok) return;
+    const r = await api("/api/flash", {dir: S.romDir, name: S.script.name, archive: S.rom.name, serial: S.serial, confirm: ok});
+    track(r.job);
+  } catch (e) { fail(e); }
+};
+
+/* ---------- job tracking ---------- */
+function track(id, onDone) {
+  S.job = id; S.since = 0; $("log").textContent = ""; $("btncancel").disabled = false;
+  document.getElementById("console").scrollIntoView({block: "nearest", behavior: "smooth"});
+  clearInterval(S.timer);
+  S.timer = setInterval(async () => {
+    try {
+      const j = await api("/api/job?since=" + S.since);
+      (j.lines || []).forEach(log); S.since = j.next || S.since;
+      const bar = $("bar");
+      if (j.progress != null && j.state === "running") { bar.classList.remove("hidden"); bar.value = j.progress; } else bar.classList.add("hidden");
+      if (j.state !== "running") {
+        clearInterval(S.timer); S.job = null; $("btncancel").disabled = true; bar.classList.add("hidden");
+        log(j.state === "done" ? "Done." : j.state === "cancelled" ? "Cancelled." : "Failed.");
+        if (j.state === "done" && onDone) onDone(j.result || {});
+      }
+    } catch (e) { clearInterval(S.timer); S.job = null; fail(e); }
+  }, 600);
+}
+$("btncancel").onclick = () => api("/api/cancel", {}).catch(fail);
+
+/* ---------- tools tab ---------- */
+$("btninfo").onclick = async () => {
+  try {
+    const d = await api("/api/device", {serial: S.serial});
+    $("info").replaceChildren(...Object.entries(d.info).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v == null ? "-" : v)]));
+  } catch (e) { fail(e); }
+};
+document.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", async () => {
+  const name = b.dataset.act; let confirm = "";
+  if (name === "wipe_data") { confirm = await confirmDialog("Wipe all data?", "This erases everything on the phone.", "WIPE"); if (!confirm) return; }
+  try {
+    const d = await api("/api/action", {name, serial: S.serial, confirm});
+    log("$ " + name + " (exit " + d.code + ")"); if (d.output) log(d.output);
+  } catch (e) { fail(e); }
+}));
+$("btnpart").onclick = async () => {
+  const partition = $("partname").value.trim(), image = $("partimg").value.trim();
+  if (!partition || !image) return log("Enter a partition and an image path.");
+  const ok = await confirmDialog("Flash " + partition + "?", "The image will overwrite this partition.", "FLASH");
+  if (!ok) return;
+  try { const d = await api("/api/partition", {partition, image, serial: S.serial}); log(d.output || "Done"); } catch (e) { fail(e); }
+};
+$("btnverify").onclick = async () => {
+  const path = $("vpath").value.trim(); if (!path) return log("Enter a file path.");
+  try { const d = await api("/api/verify", {path, expected: $("vhash").value.trim()}); track(d.job); } catch (e) { fail(e); }
+};
+$("btnclean").onclick = async () => { try { const d = await api("/api/clean", {}); log("Freed " + d.freed); } catch (e) { fail(e); } };
+$("btnupdate").onclick = async () => { try { const d = await api("/api/update", {}); log(d.message); } catch (e) { fail(e); } };
+
+scan("");
+</script>
+</body>
+</html>
