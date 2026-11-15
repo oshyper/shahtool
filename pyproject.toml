@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shahtool"
+version = "3.0.0"
+description = "Shahtool: Xiaomi fastboot ROM flasher for Termux and PC, with terminal and web GUI"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+shahtool = "shahtool.cli:main"
+
+[tool.setuptools]
+packages = ["shahtool"]
+
+[tool.setuptools.package-data]
+shahtool = ["web/*.html"]
